@@ -1,0 +1,574 @@
+---
+title: "Polished Viz 5"
+author: "Brett Chelf"
+date: "`r Sys.Date()`"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+# Concept
+For this last visualization, I want to create a network diagram using D3. In a different class of mine, I saw someone create a "pollinator web" showing the relationships between different flowering species and native pollinators. I think having an interactive version of this would be really powerful for educational purposes, so I wanted to focus on that task for this final. I haven't done a lot of work with network data before, so it's also a chance to tackle something I'm not experienced with and grow as a result. First I'll need to set up my environment, then I'll create or import my data, and then we can let D3 do most of the heavy lifting. 
+```{r packages}
+setwd('/Users/bgche/Documents/R Workspaces/VizPracticeDirectory')
+library(dplyr)
+library(networkD3)
+library(igraph)
+library(htmlwidgets)
+```
+# Data
+I'm going to build my own dataset based on information I could find from various official sources. It will be easier this way because there isn't an existing dataset with the structure I need focused on Colorado species.
+```{r data}
+edges <- data.frame(
+  pollinator = c(
+    # Mason Bees (Osmia spp.) - specialized Penstemon pollinators
+    "Mason Bee", "Mason Bee", "Mason Bee", "Mason Bee", "Mason Bee",
+    "Mason Bee", "Mason Bee",
+    # Bumble Bees - important native pollinators
+    "Bumble Bee", "Bumble Bee", "Bumble Bee", "Bumble Bee", "Bumble Bee",
+    "Bumble Bee", "Bumble Bee", "Bumble Bee", "Bumble Bee",
+    # Monarch Butterfly - milkweed specialist
+    "Monarch Butterfly", "Monarch Butterfly", "Monarch Butterfly", 
+    "Monarch Butterfly",
+    # Swallowtail Butterfly
+    "Swallowtail Butterfly", "Swallowtail Butterfly", "Swallowtail Butterfly",
+    # Hummingbirds - red tubular flower specialists
+    "Hummingbird", "Hummingbird", "Hummingbird", "Hummingbird",
+    "Hummingbird", "Hummingbird",
+    # Leafcutter Bees (Megachile spp.)
+    "Leafcutter Bee", "Leafcutter Bee", "Leafcutter Bee",
+    # Native mining bees (Andrena spp.)
+    "Mining Bee", "Mining Bee", "Mining Bee",
+    # Syrphid flies (hover flies)
+    "Syrphid Fly", "Syrphid Fly",
+    # Hawk Moths
+    "Hawk Moth", "Hawk Moth"
+  ),
+  plant = c(
+    # Mason Bee relationships
+    "Rocky Mountain Penstemon", "Firecracker Penstemon", "Rocky Mountain Beeplant",
+    "Blanketflower", "Goldenrod", "Woods Rose", "Boulder Raspberry",
+    # Bumble Bee relationships  
+    "Rocky Mountain Penstemon", "Colorado Columbine", "Blanketflower",
+    "Boulder Raspberry", "Wild Bergamot", "Rocky Mountain Beeplant",
+    "Goldenrod", "Dotted Blazing Star", "Indian Paintbrush",
+    # Monarch Butterfly relationships (milkweeds + nectar)
+    "Showy Milkweed", "Butterfly Milkweed", "Blanketflower", 
+    "Goldenrod",
+    # Swallowtail relationships
+    "Showy Milkweed", "Colorado Columbine", "Wild Bergamot",
+    # Hummingbird relationships
+    "Scarlet Gilia", "Firecracker Penstemon", "Colorado Columbine",
+    "Indian Paintbrush", "Butterfly Milkweed", "Wild Bergamot",
+    # Leafcutter Bee relationships
+    "Rocky Mountain Beeplant", "Rocky Mountain Penstemon", "Goldenrod",
+    # Mining Bee relationships
+    "Rocky Mountain Penstemon", "Boulder Raspberry", "Blanketflower",
+    # Syrphid Fly relationships
+    "Boulder Raspberry", "Goldenrod",
+    # Hawk Moth relationships
+    "Scarlet Gilia", "Colorado Columbine"
+  ),
+  stringsAsFactors = FALSE
+)
+all_nodes <- unique(c(edges$pollinator, edges$plant))
+nodes <- data.frame(
+  name = all_nodes,
+  type = c(
+    # Pollinators
+    "pollinator", "pollinator", "pollinator", "pollinator", 
+    "pollinator", "pollinator", "pollinator", "pollinator", "pollinator",
+    # Plants
+    "plant", "plant", "plant", "plant", "plant", "plant", "plant",
+    "plant", "plant", "plant", "plant", "plant", "plant", "plant"
+  ),
+  group = c(
+    # Pollinators: 1=native bees, 2=butterflies/moths, 3=birds, 4=flies
+    1, 1, 2, 2, 3, 1, 1, 4, 2,  
+    # Plants: 5=milkweeds, 6=penstemon, 7=other natives
+    6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 5, 5, 7
+  ),
+  stringsAsFactors = FALSE
+)
+cat("EDGE LIST (relationships):\n")
+print(head(edges, 10))
+cat("\n\nNODE LIST (entities with attributes):\n")
+print(nodes)
+```
+
+```{r network}
+nodes$id <- 0:(nrow(nodes) - 1)
+edges_indexed <- edges %>%
+  left_join(nodes %>% select(name, id), by = c("pollinator" = "name")) %>%
+  rename(source = id) %>%
+  left_join(nodes %>% select(name, id), by = c("plant" = "name")) %>%
+  rename(target = id)
+cat("\n\nINDEXED EDGES (ready for networkD3):\n")
+network <- forceNetwork(
+  Links = edges_indexed,
+  Nodes = nodes,
+  Source = "source",
+  Target = "target",
+  NodeID = "name",
+  Group = "group",
+  opacity = 0.9,
+  zoom = TRUE,
+  fontSize = 14,
+  linkDistance = 100,
+  charge = -100,
+  legend = TRUE,
+  bounded = FALSE,
+  opacityNoHover = 0.7,
+  colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);")
+)
+network
+```
+# First Network Diagram
+This looks alright, but it's not really what I had envisioned. I really want to show the interconnectedness of these species and this doesn't show the complexity I'm trying to convey. I think the solution is to use a disjointed network instead, beacause I can use it to show "clusters" of relationships that may not be fully interconnected. I'll also update my data to include more specialist relationships that I didn't add before. 
+```{r disjointed network}
+edges <- data.frame(
+  pollinator = c(
+    # GENERALIST POLLINATORS - visit many plant species
+    # Mason Bees (Osmia spp.) - somewhat specialized on Penstemon
+    "Mason Bee", "Mason Bee", "Mason Bee", "Mason Bee", "Mason Bee",
+    "Mason Bee", "Mason Bee",
+    # Bumble Bees - important generalist native pollinators
+    "Bumble Bee", "Bumble Bee", "Bumble Bee", "Bumble Bee", "Bumble Bee",
+    "Bumble Bee", "Bumble Bee", "Bumble Bee", "Bumble Bee",
+    # Monarch Butterfly - milkweed specialist for larvae, generalist for nectar
+    "Monarch Butterfly", "Monarch Butterfly", "Monarch Butterfly", 
+    "Monarch Butterfly",
+    # Swallowtail Butterfly - generalist
+    "Swallowtail Butterfly", "Swallowtail Butterfly", "Swallowtail Butterfly",
+    # Hummingbirds - tubular flower specialists
+    "Hummingbird", "Hummingbird", "Hummingbird", "Hummingbird",
+    "Hummingbird", "Hummingbird",
+    # Leafcutter Bees (Megachile spp.) - generalist
+    "Leafcutter Bee", "Leafcutter Bee", "Leafcutter Bee",
+    # Mining Bees (Andrena spp.) - some species are generalists
+    "Mining Bee", "Mining Bee", "Mining Bee",
+    # Syrphid flies (hover flies) - generalist
+    "Syrphid Fly", "Syrphid Fly",
+    # Hawk Moths - nocturnal generalists
+    "Hawk Moth", "Hawk Moth",
+    # SPECIALIST POLLINATORS - oligolectic/monolectic bees with specific hosts
+    # Squash Bee (Peponapis/Xenoglossa) - MONOLECTIC on Cucurbita only
+    "Squash Bee", "Squash Bee",
+    # Willow Specialist Bees (Andrena spp.) - oligolectic on Salix
+    "Willow Mining Bee", "Willow Mining Bee",
+    # Sunflower Specialist Bee (Andrena helianthi) - oligolectic on Helianthus
+    "Sunflower Mining Bee", "Sunflower Mining Bee",
+    # Goldenrod Specialist (Andrena nubecula) - oligolectic on Asteraceae
+    "Goldenrod Specialist Bee", "Goldenrod Specialist Bee", 
+    "Goldenrod Specialist Bee",
+    # Black-eyed Susan Specialist (Andrena rudbeckiae) - oligolectic
+    "Rudbeckia Mining Bee", "Rudbeckia Mining Bee",
+    # ISOLATED/LESS CONNECTED SPECIES
+    # Yucca Moth - highly specialized, isolated pollinator system
+    "Yucca Moth", "Yucca Moth",
+    # Spring Beauty Bee - early spring specialist
+    "Spring Beauty Mining Bee",
+    # Blueberry Specialist (Andrena bradleyi)
+    "Blueberry Mining Bee",
+    # Verbena Specialist (Calliopsis nebraskensis)
+    "Verbena Mining Bee",
+    # Moths - nocturnal, less connected to day-active network
+    "White-lined Sphinx Moth", "White-lined Sphinx Moth",
+    # Small Carpenter Bee - cavity nester, moderate connections
+    "Small Carpenter Bee", "Small Carpenter Bee"
+  ),
+  plant = c(
+    # Mason Bee relationships
+    "Rocky Mountain Penstemon", "Firecracker Penstemon", "Rocky Mountain Beeplant",
+    "Blanketflower", "Goldenrod", "Woods Rose", "Boulder Raspberry",
+    # Bumble Bee relationships  
+    "Rocky Mountain Penstemon", "Colorado Columbine", "Blanketflower",
+    "Boulder Raspberry", "Wild Bergamot", "Rocky Mountain Beeplant",
+    "Goldenrod", "Dotted Blazing Star", "Indian Paintbrush",
+    # Monarch Butterfly relationships
+    "Showy Milkweed", "Butterfly Milkweed", "Blanketflower", 
+    "Goldenrod",
+    # Swallowtail relationships
+    "Showy Milkweed", "Colorado Columbine", "Wild Bergamot",
+    # Hummingbird relationships
+    "Scarlet Gilia", "Firecracker Penstemon", "Colorado Columbine",
+    "Indian Paintbrush", "Butterfly Milkweed", "Wild Bergamot",
+    # Leafcutter Bee relationships
+    "Rocky Mountain Beeplant", "Rocky Mountain Penstemon", "Goldenrod",
+    # Mining Bee relationships (generalist species)
+    "Rocky Mountain Penstemon", "Boulder Raspberry", "Blanketflower",
+    # Syrphid Fly relationships
+    "Boulder Raspberry", "Goldenrod",
+    # Hawk Moth relationships
+    "Scarlet Gilia", "Colorado Columbine",
+    # SPECIALIST BEE RELATIONSHIPS - narrow host plant associations
+    # Squash Bee - ONLY visits Cucurbita (Buffalo Gourd in CO)
+    "Buffalo Gourd", "Buffalo Gourd",
+    # Willow Specialist - only Salix species
+    "Coyote Willow", "Mountain Willow",
+    # Sunflower Specialist - only Helianthus
+    "Aspen Sunflower", "Prairie Sunflower",
+    # Goldenrod Specialist - Solidago, Euthamia, Symphyotrichum
+    "Goldenrod", "Smooth Aster", "Missouri Goldenrod",
+    # Rudbeckia Specialist - only Rudbeckia and Ratibida
+    "Black-eyed Susan", "Prairie Coneflower",
+    # ISOLATED RELATIONSHIPS
+    # Yucca Moth - obligate mutualism, isolated system
+    "Yucca", "Soapweed Yucca",
+    # Spring Beauty Bee - early spring ephemeral
+    "Spring Beauty",
+    # Blueberry specialist
+    "Mountain Blueberry",
+    # Verbena specialist
+    "Dakota Vervain",
+    # White-lined Sphinx Moth - nocturnal
+    "Evening Primrose", "White Tufted Evening Primrose",
+    # Small Carpenter Bee
+    "Wild Bergamot", "Rocky Mountain Penstemon"
+  ),
+  stringsAsFactors = FALSE
+)
+unique_pollinators <- unique(edges$pollinator)
+unique_plants <- unique(edges$plant)
+all_nodes <- c(unique_pollinators, unique_plants)
+# Define node attributes for each pollinator
+pollinator_groups <- c(
+  # Pollinator groups: 1=generalist bees, 2=specialist bees, 3=butterflies/moths, 
+  # 4=birds, 5=flies, 6=highly specialized moths
+  1, 1, 3, 3, 4, 1, 1, 5, 3,  # generalists
+  2, 2, 2, 2, 2, 6, 2, 2, 2, 3, 1  # specialists and isolated
+)
+pollinator_connectivity <- c(
+  7, 9, 4, 3, 6, 3, 3, 2, 2,  # generalists
+  2, 2, 2, 3, 2, 2, 1, 1, 1, 2, 2  # specialists
+)
+# Define node attributes for each plant
+plant_groups <- c(
+  # Plant groups: 7=Penstemon, 8=milkweeds, 9=Asteraceae, 10=shrubs/roses,
+  # 11=tubular red flowers, 12=specialist hosts, 13=isolated hosts
+  7, 7, 9, 9, 10, 10, 10, 8, 8, 11, 11, 9, 11, 9, 
+  12, 12, 12, 9, 9, 12, 12, 13, 13, 13, 13, 13, 13, 13, 9, 7
+)
+plant_connectivity <- c(
+  5, 3, 5, 2, 3, 2, 2, 3, 2, 3, 2, 2, 2, 2,
+  2, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 2
+)
+nodes <- data.frame(
+  name = all_nodes,
+  type = c(rep("pollinator", length(unique_pollinators)), 
+           rep("plant", length(unique_plants))),
+  group = c(pollinator_groups, plant_groups),
+  connectivity = c(pollinator_connectivity, plant_connectivity),
+  stringsAsFactors = FALSE)
+nodes$id <- 0:(nrow(nodes) - 1)
+edges_indexed <- edges %>%
+  left_join(nodes %>% select(name, id), by = c("pollinator" = "name")) %>%
+  rename(source = id) %>%
+  left_join(nodes %>% select(name, id), by = c("plant" = "name")) %>%
+  rename(target = id)
+network <- forceNetwork(
+  Links = edges_indexed,
+  Nodes = nodes,
+  Source = "source",
+  Target = "target",
+  NodeID = "name",
+  Group = "group",
+  opacity = 0.9,
+  zoom = TRUE,
+  fontSize = 12,
+  linkDistance = 50,  # Reduced for tighter spacing
+  charge = -15,  # Less negative for tighter clustering
+  legend = TRUE,
+  bounded = FALSE,
+  opacityNoHover = 0.6,
+  colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);")
+)
+network
+```
+# Finishing Touches
+The bones are in plcea now, all I have to do is correct some of my data and category names. Then I can label the graph and edit some of the D3 parameters to get the aesthetics exactly how I want.
+```{r polished network}
+edges <- data.frame(
+  pollinator = c(
+    # GENERALIST POLLINATORS - visit many plant species
+    # Mason Bees (Osmia spp.) - somewhat specialized on Penstemon
+    "Mason Bee", "Mason Bee", "Mason Bee", "Mason Bee", "Mason Bee",
+    "Mason Bee", "Mason Bee",
+    # Bumble Bees - important generalist native pollinators
+    "Bumble Bee", "Bumble Bee", "Bumble Bee", "Bumble Bee", "Bumble Bee",
+    "Bumble Bee", "Bumble Bee", "Bumble Bee", "Bumble Bee",
+    # Monarch Butterfly - milkweed specialist for larvae, generalist for nectar
+    "Monarch Butterfly", "Monarch Butterfly", "Monarch Butterfly", 
+    "Monarch Butterfly",
+    # Swallowtail Butterfly - generalist
+    "Swallowtail Butterfly", "Swallowtail Butterfly", "Swallowtail Butterfly",
+    # Hummingbirds - tubular flower specialists
+    "Hummingbird", "Hummingbird", "Hummingbird", "Hummingbird",
+    "Hummingbird", "Hummingbird",
+    # Leafcutter Bees (Megachile spp.) - generalist
+    "Leafcutter Bee", "Leafcutter Bee", "Leafcutter Bee",
+    # Mining Bees (Andrena spp.) - some species are generalists
+    "Mining Bee", "Mining Bee", "Mining Bee",
+    # Syrphid flies (hover flies) - generalist
+    "Syrphid Fly", "Syrphid Fly",
+    # Hawk Moths - nocturnal generalists
+    "Hawk Moth", "Hawk Moth",
+    # SPECIALIST POLLINATORS - oligolectic/monolectic bees with specific hosts
+    # Squash Bee (Peponapis/Xenoglossa) - MONOLECTIC on Cucurbita only
+    "Squash Bee", "Squash Bee",
+    # Willow Specialist Bees (Andrena spp.) - oligolectic on Salix
+    "Willow Mining Bee", "Willow Mining Bee",
+    # Sunflower Specialist Bee (Andrena helianthi) - oligolectic on Helianthus
+    "Sunflower Mining Bee", "Sunflower Mining Bee",
+    # Goldenrod Specialist (Andrena nubecula) - oligolectic on Asteraceae
+    "Goldenrod Specialist Bee", "Goldenrod Specialist Bee", 
+    "Goldenrod Specialist Bee",
+    # Black-eyed Susan Specialist (Andrena rudbeckiae) - oligolectic
+    "Rudbeckia Mining Bee", "Rudbeckia Mining Bee",
+    # ISOLATED/LESS CONNECTED SPECIES
+    # Yucca Moth - highly specialized, isolated pollinator system
+    "Yucca Moth", "Yucca Moth",
+    # Spring Beauty Bee - early spring specialist
+    "Spring Beauty Mining Bee",
+    # Blueberry Specialist (Andrena bradleyi)
+    "Blueberry Mining Bee",
+    # Verbena Specialist (Calliopsis nebraskensis)
+    "Verbena Mining Bee",
+    # Moths - nocturnal, less connected to day-active network
+    "White-lined Sphinx Moth", "White-lined Sphinx Moth",
+    # Small Carpenter Bee - cavity nester, moderate connections
+    "Small Carpenter Bee", "Small Carpenter Bee"
+  ),
+  plant = c(
+    # Mason Bee relationships
+    "Rocky Mountain Penstemon", "Firecracker Penstemon", "Rocky Mountain Beeplant",
+    "Blanketflower", "Goldenrod", "Woods Rose", "Boulder Raspberry",
+    # Bumble Bee relationships  
+    "Rocky Mountain Penstemon", "Colorado Columbine", "Blanketflower",
+    "Boulder Raspberry", "Wild Bergamot", "Rocky Mountain Beeplant",
+    "Goldenrod", "Dotted Blazing Star", "Indian Paintbrush",
+    # Monarch Butterfly relationships
+    "Showy Milkweed", "Butterfly Milkweed", "Blanketflower", 
+    "Goldenrod",
+    # Swallowtail relationships
+    "Showy Milkweed", "Colorado Columbine", "Wild Bergamot",
+    # Hummingbird relationships
+    "Scarlet Gilia", "Firecracker Penstemon", "Colorado Columbine",
+    "Indian Paintbrush", "Butterfly Milkweed", "Wild Bergamot",
+    # Leafcutter Bee relationships
+    "Rocky Mountain Beeplant", "Rocky Mountain Penstemon", "Goldenrod",
+    # Mining Bee relationships (generalist species)
+    "Rocky Mountain Penstemon", "Boulder Raspberry", "Blanketflower",
+    # Syrphid Fly relationships
+    "Boulder Raspberry", "Goldenrod",
+    # Hawk Moth relationships
+    "Scarlet Gilia", "Colorado Columbine",
+    # SPECIALIST BEE RELATIONSHIPS - narrow host plant associations
+    # Squash Bee - ONLY visits Cucurbita (Buffalo Gourd in CO)
+    "Buffalo Gourd", "Buffalo Gourd",
+    # Willow Specialist - only Salix species
+    "Coyote Willow", "Mountain Willow",
+    # Sunflower Specialist - only Helianthus
+    "Aspen Sunflower", "Prairie Sunflower",
+    # Goldenrod Specialist - Solidago, Euthamia, Symphyotrichum
+    "Goldenrod", "Smooth Aster", "Missouri Goldenrod",
+    # Rudbeckia Specialist - only Rudbeckia and Ratibida
+    "Black-eyed Susan", "Prairie Coneflower",
+    # ISOLATED RELATIONSHIPS
+    # Yucca Moth - obligate mutualism, isolated system
+    "Yucca", "Soapweed Yucca",
+    # Spring Beauty Bee - early spring ephemeral
+    "Spring Beauty",
+    # Blueberry specialist
+    "Mountain Blueberry",
+    # Verbena specialist
+    "Dakota Vervain",
+    # White-lined Sphinx Moth - nocturnal
+    "Evening Primrose", "White Tufted Evening Primrose",
+    # Small Carpenter Bee
+    "Wild Bergamot", "Rocky Mountain Penstemon"
+  ),
+  stringsAsFactors = FALSE
+)
+unique_pollinators <- unique(edges$pollinator)
+unique_plants <- unique(edges$plant)
+all_nodes <- c(unique_pollinators, unique_plants)
+pollinator_groups <- c(
+  "Generalist Bees", "Generalist Bees", "Butterflies & Moths", "Butterflies & Moths", 
+  "Birds", "Generalist Bees", "Generalist Bees", "Flies", "Butterflies & Moths",  # generalists
+  "Specialist Bees", "Specialist Bees", "Specialist Bees", "Specialist Bees", 
+  "Specialist Bees", "Butterflies & Moths", "Specialist Bees", "Specialist Bees", 
+  "Specialist Bees", "Butterflies & Moths", "Generalist Bees"  # specialists
+)
+pollinator_connectivity <- c(
+  7, 9, 4, 3, 6, 3, 3, 2, 2,  # generalists
+  2, 2, 2, 3, 2, 2, 1, 1, 1, 2, 2  # specialists
+)
+# All plants get "Plants" label
+plant_groups <- rep("Plants", length(unique_plants))
+plant_connectivity <- c(
+  5, 3, 5, 2, 3, 2, 2, 3, 2, 3, 2, 2, 2, 2,
+  2, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 2
+)
+nodes <- data.frame(
+  name = all_nodes,
+  type = c(rep("pollinator", length(unique_pollinators)), 
+           rep("plant", length(unique_plants))),
+  group = c(pollinator_groups, plant_groups),
+  connectivity = c(pollinator_connectivity, plant_connectivity),
+  stringsAsFactors = FALSE
+)
+nodes$id <- 0:(nrow(nodes) - 1)
+edges_indexed <- edges %>%
+  left_join(nodes %>% select(name, id), by = c("pollinator" = "name")) %>%
+  rename(source = id) %>%
+  left_join(nodes %>% select(name, id), by = c("plant" = "name")) %>%
+  rename(target = id)
+network <- forceNetwork(
+  Links = edges_indexed,
+  Nodes = nodes,
+  Source = "source",
+  Target = "target",
+  NodeID = "name",
+  Group = "group",
+  opacity = 0.9,
+  zoom = TRUE,
+  fontSize = 10,
+  linkDistance = 110,
+  charge = -30,
+  legend = TRUE,
+  bounded = TRUE,
+  opacityNoHover = 0.6,
+  colourScale = JS('d3.scaleOrdinal()
+    .domain(["Generalist Bees", "Specialist Bees", "Butterflies & Moths", "Birds", "Flies", "Plants"])
+    .range(["#DAA520", "#FF69B4", "#FF8C00", "#87CEEB", "#8B4513", "#228B22"])')
+)
+library(htmlwidgets)
+network <- htmlwidgets::prependContent(network, 
+  htmltools::tags$h2("Colorado Pollinator-Plant Relationships",
+                     style = "text-align: center; font-family: Arial, sans-serif; color: #333;"))
+network
+```
+# Story Telling
+This tool is really fun to navigate through, but it could be doing more to tell viewers about the vitality of these species and the threats posed to our ecosystems without them. I've decided to pair a suite of graphs along side this tool so that some more nuance can be communicated by this project. 
+```{r visual suite}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(scales)
+# Source: Colorado Native Pollinating Insects Health Study (2024)
+# CU Boulder research, Xerces Society, CO Dept of Natural Resources
+specialization_data <- data.frame(
+  Category = c("Generalist Pollinators", "Specialist Pollinators"),
+  Count = c(680, 320),
+  Percentage = c(68, 32)
+)
+bumblebee_status <- data.frame(
+  Status = c("At Risk/Seeking Protection", "Stable Population", "Data Deficient"),
+  Count = c(5, 15, 4),
+  Percentage = c(21, 62, 17)
+)
+threats_data <- data.frame(
+  Threat = c("Habitat Loss", "Pesticides", "Climate Change", 
+             "Non-native Species\nCompetition", "Disease/Parasites"),
+  Impact_Score = c(95, 85, 80, 70, 75),
+  Category = c("Primary", "Primary", "Primary", "Secondary", "Secondary")
+)
+decline_data <- data.frame(
+  Time_Period = c("1990", "2000", "2010", "2024"),
+  Relative_Population = c(100, 85, 65, 47)
+)
+chart1 <- ggplot(specialization_data, aes(x = "", y = Percentage, fill = Category)) +
+  geom_bar(stat = "identity", width = 1, color = "white", size = 2) +
+  coord_polar("y", start = 0) +
+  scale_fill_manual(values = c("Generalist Pollinators" = "#DAA520", 
+                                "Specialist Pollinators" = "#FF69B4")) +
+  theme_void() +
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 14),
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 20, margin = margin(b = 10)),
+        plot.subtitle = element_text(hjust = 0.5, size = 14, color = "gray30", margin = margin(b = 15)),
+        plot.margin = margin(20, 20, 20, 20)) +
+  labs(title = "Pollinator Specialization",
+       subtitle = "~32% of Colorado's bees are pollen specialists") +
+  annotate("text", x = 1.3, y = 35, label = "~680\nspecies", 
+           size = 6, fontface = "bold", color = "black") +
+  annotate("text", x = 1.3, y = 90, label = "~320\nspecies", 
+           size = 6, fontface = "bold", color = "black")
+chart2 <- ggplot(bumblebee_status, aes(x = reorder(Status, -Count), y = Count, fill = Status)) +
+  geom_bar(stat = "identity", width = 0.6) +
+  geom_text(aes(label = paste0(Count, " species\n(", Percentage, "%)")), 
+            vjust = -0.3, size = 5, fontface = "bold") +
+  scale_fill_manual(values = c("At Risk/Seeking Protection" = "#d62728",
+                                "Stable Population" = "#2ca02c",
+                                "Data Deficient" = "#9467bd")) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 20, margin = margin(b = 10)),
+        plot.subtitle = element_text(hjust = 0.5, size = 14, color = "gray30", margin = margin(b = 15)),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(size = 12, lineheight = 0.9),
+        axis.text.y = element_text(size = 13),
+        axis.title.y = element_text(size = 14),
+        plot.margin = margin(20, 30, 20, 30)) +
+  labs(title = "Bumblebee Conservation Status",
+       subtitle = "5 of 24 species seeking ESA protection",
+       y = "Number of Species") +
+  ylim(0, 20)
+chart3 <- ggplot(threats_data, aes(x = reorder(Threat, Impact_Score), y = Impact_Score, fill = Category)) +
+  geom_bar(stat = "identity", width = 0.7) +
+  geom_text(aes(label = Impact_Score), hjust = -0.2, size = 5, fontface = "bold") +
+  coord_flip() +
+  scale_fill_manual(values = c("Primary" = "#d62728", "Secondary" = "#ff7f0e")) +
+  scale_y_continuous(limits = c(0, 105), expand = c(0, 0)) +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 14),
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 20, margin = margin(b = 10)),
+        plot.subtitle = element_text(hjust = 0.5, size = 14, color = "gray30", margin = margin(b = 15)),
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 13),
+        axis.text.x = element_text(size = 13),
+        axis.title.x = element_text(size = 14),
+        plot.margin = margin(20, 30, 20, 30)) +
+  labs(title = "Major Threats to Colorado Pollinators",
+       subtitle = "Relative impact severity (0-100 scale)",
+       y = "Impact Severity")
+chart4 <- ggplot(decline_data, aes(x = Time_Period, y = Relative_Population, group = 1)) +
+  geom_line(color = "#d62728", size = 1.5) +
+  geom_point(color = "#d62728", size = 5) +
+  geom_area(alpha = 0.2, fill = "#d62728") +
+  geom_text(aes(label = paste0(Relative_Population, "%")), vjust = -1.2, size = 5, fontface = "bold") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 20, margin = margin(b = 10)),
+        plot.subtitle = element_text(hjust = 0.5, size = 14, color = "gray30", margin = margin(b = 15)),
+        panel.grid.minor = element_blank(),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 13),
+        plot.margin = margin(20, 30, 20, 30)) +
+  labs(title = "Pollinator Population Decline",
+       subtitle = "Some species declined >50% in 35 years",
+       x = "Year", y = "Relative Population (%)") +
+  ylim(0, 115)
+network
+print(chart1)
+print(chart2)
+print(chart3)
+print(chart4)
+ggsave("chart1_pollinator_specialization.png", chart1, width = 10, height = 8, dpi = 300)
+ggsave("chart2_bumblebee_status.png", chart2, width = 10, height = 8, dpi = 300)
+ggsave("chart3_threats.png", chart3, width = 10, height = 8, dpi = 300)
+ggsave("chart4_decline.png", chart4, width = 10, height = 8, dpi = 300)
+cat("\n KEY CONSERVATION FINDINGS \n")
+cat("• Colorado hosts 1,000+ native bee species (30% of North America's bees)\n")
+cat("• ~32% of bee species are pollen specialists (vulnerable to habitat loss)\n")
+cat("• 20% of bumblebee species are seeking ESA protection\n")
+cat("• Some pollinator populations declined >50% in past 35 years\n")
+cat("• Primary threats: habitat loss, pesticides, climate change\n")
+cat("• Colorado ranks 5th nationally for honey bee die-offs\n")
+cat("• Non-native honey bees compete with native pollinators for resources\n")
+```
+# Conclusion
+There we go. This is super fun to click through and drag around, and I think I accomplished what I set out to do. The names of the nodes are a little messy and there's still a little bit of visual overlapping when you aren't highlighting anything specific, but I couldn't find a way to work around that without using a different type of visualization. And I think the other 4 charts below make the information of the whole thing more compelling. This last viz is a synthesis of ideas from some of my other classes thinking about pollinator support and environmental planning, and it was cool to use the tools I learned in this class to work with ideas from another. 

@@ -1,0 +1,337 @@
+---
+title: "ENVS3100 Polished Viz 4"
+author: "Brett Chelf"
+date: "`r Sys.Date()`"
+output: html_document
+---
+# Species Richness and Land Cover in New Zealand: Case Study
+The face of the planet is changing rapidly in the 21st century, and much of the environmental degradation caused by humans stems from our development of natural spaces into human-oriented domains. To visually demonstrate a connection between land development and the loss of biodiversity, I am going to build two charts with publicly available data. I have previously built an interactive map of New Zealand showing species richness by regional council, so I will build off of that in this study.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd('/Users/bgche/Documents/R Workspaces/VizPracticeDirectory')
+library(tidyr)
+library(dplyr)
+library(leaflet)
+library(mapview)
+library(tmap)
+library(sf)
+library(spData)
+library(ggplot2)
+library(readr)
+wildlifedata <- readr::read_csv('observations_mammalia_global.csv')
+```
+```{r data1}
+library(spData)
+regions_nz <- nz
+wld <- wildlifedata[c("id","latitude","longitude","scientific_name","common_name","observed_on")]
+wld_filtered <- wld %>%
+  filter(!grepl("Domestic|European", common_name, ignore.case = TRUE))
+
+observations_sf <- st_as_sf(
+  wld_filtered, coords = c("longitude", "latitude"), crs = 4326
+)
+st_crs(observations_sf)
+st_crs(regions_nz)
+observations_sf <- st_transform(observations_sf, st_crs(regions_nz))
+filtered_points <- st_join(observations_sf, regions_nz, join = st_within, left = FALSE)
+nz_buffer <- st_buffer(regions_nz, dist = 0.25)
+near_points <- st_filter(observations_sf, nz_buffer)
+rm(wildlifedata); gc()
+# I cleared original file from the environment to optimize working memory
+```
+
+```{r map1}
+observations_with_region <- st_join(filtered_points, regions_nz, join = st_within)
+region_summary <- observations_with_region %>%
+  group_by(Name.x) %>%
+  summarise(
+    total_obs = n(),
+    species_richness = n_distinct(common_name),
+    species_count = list(table(common_name))
+  )
+regions_df <- st_set_geometry(regions_nz, NULL) 
+region_summary_df <- as.data.frame(region_summary) 
+region_summary_df <- region_summary_df %>%
+  rename(Name = Name.x)
+merged_df <- left_join(regions_df, region_summary_df, by = 'Name')
+regions_nz_summary <- st_as_sf(merged_df)
+st_geometry(regions_nz_summary) <- regions_nz$geom
+regions_nz_summary$species_popup <- sapply(regions_nz_summary$species_count, function(sp_table) {
+  paste(names(sp_table), sp_table, sep = ": ", collapse = "<br>")
+})
+regions_nz_summary$popup_content <- paste0(
+  "<b>Region: </b>", regions_nz_summary$Name, "<br>",
+  "<b>Total observations: </b>", regions_nz_summary$total_obs, "<br>",
+  "<b>Species richness: </b>", regions_nz_summary$species_richness, "<br><br>",
+  "<b>Species counts:</b><br>",
+  sapply(regions_nz_summary$species_count, function(sp_table) {
+    paste(names(sp_table), sp_table, sep = ": ", collapse = "<br>")
+  })
+)
+library(stringr)
+regions_nz_summary$species_popup <- sapply(regions_nz_summary$species_count, function(sp_table) {
+  paste(names(sp_table), sp_table, sep = ": ", collapse = "<br/>")
+})
+regions_nz_summary$popup_content <- paste0(
+  "<b>Region: </b>", regions_nz_summary$Name, "<br>",
+  "<b>Species richness: </b>", regions_nz_summary$species_richness, "<br>",
+  "<b>Species counts:</b><br>", regions_nz_summary$species_popup
+)
+rm(
+  wld,
+  wld_filtered,
+  observations_sf,
+  filtered_points,
+  near_points,
+  nz_buffer,
+  observations_with_region,
+  region_summary
+);
+gc() #Again, clearing unnecessary objects
+caption_point <- st_sf(
+  label = "Data source: Travis Dawson via Kaggle https://www.kaggle.com/datasets/travisdaws/spatiotemporal-wildlife-dataset/data",
+  geometry = st_sfc(st_point(c(mean(st_coordinates(regions_nz)[,1]), min(st_coordinates(regions_nz)[,2]) - 1))),
+  crs = st_crs(regions_nz)
+)
+tmap_mode("view")
+tm_shape(regions_nz_summary) +
+  tm_polygons(
+    col = "species_richness", 
+    palette = "YlOrRd", 
+    style = "quantile", 
+    id = "popup_content",
+    title = "Unique Species (Richness)",
+    fill.legend = 
+      tm_legend(
+        title = "Number of Species",
+        title.size = 1.2,
+        text.size = 0.9,
+        position = c("right", "bottom"),
+        orientation = "vertical",
+        bg.color = "white",
+        bg.alpha = 0.8,
+        frame = TRUE)) +
+  tm_shape(caption_point) +
+  tm_text("label", size = 0.7, col = "black", html=TRUE) +
+tm_view()
+```
+# Paired Visualization
+Now that I've rebuilt the interactive map in this file, I can go ahead and start building the second visual I want to pair with it. I'm planning to make a scatter plot showing the change in native land cover by regional council. To do this, I found land cover data provided by the government of New Zealand, which includes data from different time steps. Using this, I will compare the time steps to show the net change of each region and plot one point per region to show where this change has been most drastic.
+```{r data2}
+#I've been extra careful in this project to keep environment as light as possible, because #the data I need to use covers a large area. Realistically, a more powerful software like #ArcGIS Pro should be used to create this sort of thing. But the second Viz will be made using #ggplot 2
+#First I need to trim my data. I'll do this in R instead of organizing in Excel just for the sake of practice.
+library(readxl)
+test_sheet <- "Auckland"
+test_file <- "lcdb-v50-cover-class-change-summary-1996-2001.xlsx"
+cat("=== TESTING DIFFERENT SKIP VALUES ===\n\n")
+for (skip_rows in 0:5) {
+  cat("--- SKIP =", skip_rows, "---\n")
+  data <- read_excel(test_file, sheet = test_sheet, skip = skip_rows)
+  cat("Columns found:", paste(names(data)[1:5], collapse = ", "), "...\n")
+  cat("First column, first 10 values:\n")
+  print(head(data[[1]], 10))
+  cat("\nSecond column, first 10 values:\n")
+  print(head(data[[2]], 10))
+  cat("\n\n")
+}
+region_sheets <- c(
+  "Auckland", "Bay Of Plenty", "Canterbury", "Gisborne", "Hawkes Bay",
+  "Manawatu-Wanganui", "Marlborough", "Nelson", "Northland", "Otago",
+  "Southland", "Taranaki", "Tasman", "Waikato", "Wellington", 
+  "West Coast", "Chathams"
+)
+
+natural_classes <- c(
+  "Alpine Grass",
+  "Tall Tussock",
+  "Depleted",
+  "Herbaceous Fresh",
+  "Herbaceous Saline",
+  "Flaxland",
+  "Fernland",
+  "Manuka&Kanuka",
+  "Broadleaved Indigen",
+  "Sub Alpine Shrub",
+  "Matagouri&Grey Scrub",
+  "Peat Shrub",
+  "Dune Shrub",
+  "Mangrove",
+  "Indigenous Forest"
+)
+
+extract_natural_total <- function(excel_file, sheet_name, natural_classes) {
+  data <- read_excel(excel_file, sheet = sheet_name, skip = 2)
+  class_col_name <- names(data)[2]
+  total_col_name <- names(data)[ncol(data)]
+  
+  natural_data <- data[data[[class_col_name]] %in% natural_classes, ]
+  total_natural <- sum(as.numeric(natural_data[[total_col_name]]), na.rm = TRUE)
+  
+  return(total_natural)
+}
+
+calculate_regional_loss <- function(file_1996, file_2018, region_sheets, natural_classes) {
+  results <- data.frame(
+    Region = character(),
+    Natural_1996 = numeric(),
+    Natural_2018 = numeric(),
+    Loss_Hectares = numeric(),
+    Loss_Percent = numeric(),
+    stringsAsFactors = FALSE
+  )
+  
+  for (region in region_sheets) {
+    cat("Processing region:", region, "\n")
+    tryCatch({
+      natural_1996 <- extract_natural_total(file_1996, region, natural_classes)
+      natural_2018 <- extract_natural_total(file_2018, region, natural_classes)
+      loss_ha <- natural_1996 - natural_2018
+      loss_pct <- ifelse(natural_1996 > 0, (loss_ha / natural_1996) * 100, 0)
+      
+      results <- rbind(results, data.frame(
+        Region = region,
+        Natural_1996 = natural_1996,
+        Natural_2018 = natural_2018,
+        Loss_Hectares = loss_ha,
+        Loss_Percent = loss_pct
+      ))
+      
+      cat("  1996:", format(natural_1996, big.mark = ","), "ha | 2018:", 
+          format(natural_2018, big.mark = ","), "ha | Loss:", 
+          format(loss_ha, big.mark = ","), "ha\n\n")
+      
+    }, error = function(e) {
+      message(paste("Error processing region:", region, "-", e$message))
+    })
+  }
+  
+  return(results)
+}
+
+land_cover_loss <- calculate_regional_loss(
+  file_1996 = "lcdb-v50-cover-class-change-summary-1996-2001.xlsx",
+  file_2018 = "lcdb-v50-cover-class-change-summary-2012-2018.xlsx",
+  region_sheets = region_sheets,
+  natural_classes = natural_classes
+)
+
+cat("\n=== ALL REGIONS IN DATA ===\n")
+print(land_cover_loss$Region)
+cat("\n")
+
+land_cover_loss <- land_cover_loss %>%
+  mutate(Region = case_when(
+    Region == "Chathams" ~ "Chatham Islands",
+    Region == "Hawkes Bay" ~ "Hawke's Bay",
+    TRUE ~ Region
+  )) %>%
+  arrange(desc(Loss_Hectares))
+
+print(land_cover_loss)
+
+cat("\n=== SUMMARY STATISTICS ===\n")
+cat("Total natural land cover lost across all regions:", 
+    format(sum(land_cover_loss$Loss_Hectares), big.mark = ","), "hectares\n")
+cat("Average loss per region:", 
+    format(mean(land_cover_loss$Loss_Hectares), big.mark = ",", digits = 2), "hectares\n")
+cat("Region with most loss:", land_cover_loss$Region[1], 
+    "(", format(land_cover_loss$Loss_Hectares[1], big.mark = ","), "ha )\n")
+cat("Region with least loss:", land_cover_loss$Region[nrow(land_cover_loss)], 
+    "(", format(land_cover_loss$Loss_Hectares[nrow(land_cover_loss)], big.mark = ","), "ha )\n\n")
+```
+Ok, this took way longer than I expected. Importing the excel files by individual sheets and trimming off the headers was a puzzle for me, and then there were mismatches in the naming conventions for my land cover classes. After lots of trial and error, the data is clean and workable. In the next chunk, I will create two bar graphs to display the loss of natural land cover (in total hectares and by percentage) and summon the interactive map from earlier so that all of the data exploration stuff is in one place on my html.
+```{r plots_gallery, echo=FALSE, message=FALSE, warning=FALSE, fig.width=10, fig.height=6}
+ggplot(land_cover_loss, aes(x = reorder(Region, Loss_Hectares), y = Loss_Hectares)) +
+  geom_col(aes(fill = Loss_Hectares), width = 0.7) +
+  scale_fill_gradient(low = "#FFFFCC", high = "#800026", 
+                      name = "Loss (ha)",
+                      labels = scales::comma) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Natural Land Cover Loss by Region (1996-2018)",
+    subtitle = "Indigenous ecosystems including forests, shrublands, and native grasslands",
+    x = NULL,
+    y = "Natural Land Cover Loss (hectares)",
+    caption = "Data source: New Zealand Land Cover Database v5.0"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, hjust = 0),
+    plot.subtitle = element_text(size = 10, color = "gray30", hjust = 0),
+    axis.text.y = element_text(size = 10),
+    axis.text.x = element_text(size = 9),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "right"
+  )
+ggplot(land_cover_loss, aes(x = reorder(Region, Loss_Percent), y = Loss_Percent)) +
+  geom_col(aes(fill = Loss_Percent), width = 0.7) +
+  scale_fill_gradient(low = "#FFFFCC", high = "#800026", 
+                      name = "% Loss") +
+  coord_flip() +
+  labs(
+    title = "Natural Land Cover Loss by Region (% of 1996 baseline)",
+    subtitle = "Percentage change in indigenous ecosystems",
+    x = NULL,
+    y = "Percentage Loss (%)",
+    caption = "Data source: New Zealand Land Cover Database v5.0"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, hjust = 0),
+    plot.subtitle = element_text(size = 10, color = "gray30", hjust = 0),
+    axis.text.y = element_text(size = 10),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+data(nz)
+regions_nz <- nz
+land_cover_spatial <- left_join(
+  regions_nz, 
+  land_cover_loss, 
+  by = c("Name" = "Region")
+)
+write.csv(land_cover_loss, "natural_land_cover_loss_summary.csv", row.names = FALSE)
+cat("\nResults saved to: natural_land_cover_loss_summary.csv\n")
+regions_nz_summary$species_popup <- sapply(regions_nz_summary$species_count, function(sp_table) {
+  paste(names(sp_table), sp_table, sep = ": ", collapse = "<br/>")
+})
+regions_nz_summary$popup_content <- paste0(
+  "<b>Region: </b>", regions_nz_summary$Name, "<br>",
+  "<b>Species richness: </b>", regions_nz_summary$species_richness, "<br>",
+  "<b>Species counts:</b><br>", regions_nz_summary$species_popup
+)
+caption_point <- st_sf(
+  label = "Data source: Travis Dawson via Kaggle https://www.kaggle.com/datasets/travisdaws/spatiotemporal-wildlife-dataset/data",
+  geometry = st_sfc(st_point(c(mean(st_coordinates(regions_nz)[,1]), min(st_coordinates(regions_nz)[,2]) - 1))),
+  crs = st_crs(regions_nz)
+)
+tmap_mode("view")
+tm_shape(regions_nz_summary) +
+  tm_polygons(
+    col = "species_richness", 
+    palette = "YlOrRd", 
+    style = "quantile", 
+    id = "popup_content",
+    title = "Unique Species (Richness)",
+    fill.legend = 
+      tm_legend(
+        title = "Number of Species",
+        title.size = 1.2,
+        text.size = 0.9,
+        position = c("right", "bottom"),
+        orientation = "vertical",
+        bg.color = "white",
+        bg.alpha = 0.8,
+        frame = TRUE)) +
+  tm_shape(caption_point) +
+  tm_text("label", size = 0.7, col = "black", html=TRUE) +
+tm_view()
+```
+# Reflection
+
+I'm really proud of this project. The final product looks really clean and professional in my opinion, and I think it communicates a deeper trend/story by combining the different angles of analysis. This was a really tough exercise in my logic processing and R skills though, admittedly, I streamlined convoluted chunks/functions with the help of AI. In the end, this is something I would happily put my name on and publish.
+
+Brett Chelf
+Data from: https://lris.scinfo.org.nz/layer/104400-lcdb-v50-land-cover-database-version-50-mainland-new-zealand-deprecated/history/

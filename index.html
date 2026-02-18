@@ -16,6 +16,34 @@
   </style>
 </head>
 <body>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: black;
+  }
+  canvas {
+    display: block;
+  }
+  #tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: rgba(10, 10, 30, 0.85);
+    color: #ccd6ff;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid rgba(120, 170, 255, 0.4);
+    font-family: Georgia, serif;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    white-space: nowrap;
+  }
+</style>
+
+<div id="tooltip"></div>
+<canvas id="nebulaCanvas" ...></canvas>
   <canvas id="nebulaCanvas" style="position:fixed; top:0; left:0; width:100vw; height:100vh; display:block;"></canvas>
   <script>
     const canvas = document.getElementById('nebulaCanvas');
@@ -54,6 +82,22 @@ function initNebula() {
   particles = [];
   backgroundStars = [];
   projectStars = [];
+
+const projectLinks = [
+  'ENVS3100PolishedViz4.html',
+  'ENVS3100FinalViz.html',
+  'pdfs/GISAspenTransport.pdf',
+  'pdfs/CUPollinatorGarden.pdf',
+  'pdfs/LAND3103Plan3.pdf'
+];
+
+const projectLabels = [
+  'Interactive New Zealand Species Map',
+  'Colorado Pollinator Network',
+  'Aspen Transportation Map',
+  'CU Pollinator Garden Plan',
+  'CASE Center Mountainside Plan'
+];
 
   const projectLinks = [
     'ENVS3100PolishedViz4.html',
@@ -100,7 +144,8 @@ function initNebula() {
       y: centerY + Math.sin(angle) * radius,
       baseRadius: 8 + Math.random() * 6,
       pulseOffset: Math.random() * 10,
-      url: projectLinks[i]
+      url: projectLinks[i],
+      label: projectLabels[i] 
     });
   }
 }
@@ -118,7 +163,8 @@ function getStarUnderCursor(mx, my) {
     return Math.sqrt(dx*dx + dy*dy) < star.baseRadius * 4;
   });
 }
-
+const tooltip = document.getElementById('tooltip');
+    
 canvas.addEventListener('mousemove', function(e) {
   let rect = canvas.getBoundingClientRect();
   let cx = e.clientX - rect.left;
@@ -127,6 +173,16 @@ canvas.addEventListener('mousemove', function(e) {
   mouseY = cy;
   hoveredStar = getStarUnderCursor(cx, cy);
   canvas.style.cursor = hoveredStar ? 'pointer' : 'default';
+
+    if (hoveredStar) {
+    tooltip.textContent = hoveredStar.label;
+    tooltip.style.opacity = '1';
+    // offset so it doesn't sit under the cursor
+    tooltip.style.left = (e.clientX + 18) + 'px';
+    tooltip.style.top  = (e.clientY - 28) + 'px';
+  } else {
+    tooltip.style.opacity = '0';
+  }
 });
 
 canvas.addEventListener('click', function(e) {
@@ -247,6 +303,7 @@ animate();
   </script>
 </body>
 </html>
+
 
 
 

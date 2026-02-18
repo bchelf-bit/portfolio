@@ -3,39 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brett Chelf Portfolio</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: black;
-    }
-    canvas {
-      display: block;
-    }
-    #tooltip {
-      position: fixed;
-      pointer-events: none;
-      background: rgba(10, 10, 30, 0.85);
-      color: #ccd6ff;
-      padding: 8px 14px;
-      border-radius: 6px;
-      border: 1px solid rgba(120, 170, 255, 0.4);
-      font-family: Georgia, serif;
-      font-size: 13px;
-      letter-spacing: 0.05em;
-      opacity: 0;
-      transition: opacity 0.2s ease;
-      white-space: nowrap;
-    }
-  </style>
+  <title>Brett Chelf</title>
 </head>
-<body>
-  <div id="tooltip"></div>
+<body style="margin:0; overflow:hidden; background:black;">
+
+  <div id="tooltip" style="
+    position: fixed;
+    pointer-events: none;
+    z-index: 999;
+    background: rgba(10, 10, 30, 0.85);
+    color: #ccd6ff;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid rgba(120, 170, 255, 0.4);
+    font-family: Georgia, serif;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    white-space: nowrap;
+  "></div>
+
   <canvas id="nebulaCanvas" style="position:fixed; top:0; left:0; width:100vw; height:100vh; display:block;"></canvas>
+
   <script>
+  document.addEventListener('DOMContentLoaded', function() {
+
     const canvas = document.getElementById('nebulaCanvas');
     const ctx = canvas.getContext('2d');
+    const tooltip = document.getElementById('tooltip');
 
     let centerX, centerY;
     let cloudWidth, cloudHeight;
@@ -144,13 +140,11 @@
       });
     }
 
-    const tooltip = document.getElementById('tooltip');
+    canvas.addEventListener('mouseleave', function() {
+      tooltip.style.opacity = '0';
+    });
 
-canvas.addEventListener('mouseleave', function() {
-  tooltip.style.opacity = '0';
-});
-
-canvas.addEventListener('mousemove', function(e) {
+    canvas.addEventListener('mousemove', function(e) {
       let rect = canvas.getBoundingClientRect();
       let cx = e.clientX - rect.left;
       let cy = e.clientY - rect.top;
@@ -284,7 +278,8 @@ canvas.addEventListener('mousemove', function(e) {
     }
 
     animate();
+
+  }); // end DOMContentLoaded
   </script>
 </body>
 </html>
-

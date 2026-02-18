@@ -146,7 +146,11 @@
 
     const tooltip = document.getElementById('tooltip');
 
-    canvas.addEventListener('mousemove', function(e) {
+canvas.addEventListener('mouseleave', function() {
+  tooltip.style.opacity = '0';
+});
+
+canvas.addEventListener('mousemove', function(e) {
       let rect = canvas.getBoundingClientRect();
       let cx = e.clientX - rect.left;
       let cy = e.clientY - rect.top;
@@ -283,3 +287,4 @@
   </script>
 </body>
 </html>
+

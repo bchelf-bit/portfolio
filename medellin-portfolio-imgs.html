@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manrique, Medellín — Brett Chelf</title>
+<meta name="description" content="Site analysis, design, and construction from a community library project in Barrio La Cruz, Manrique, Medellín.">
+
+<!--
+  HOW TO SWAP IN REAL PHOTOS
+  ==========================
+  Every placeholder looks like this:
+
+    <div class="slot">
+      <div class="slot-tag">01</div>
+    </div>
+
+  Replace it with:
+
+    <div class="slot slot--filled">
+      <img src="images/your-file.jpg" alt="Describe the photo">
+      <div class="slot-tag">01</div>
+    </div>
+
+  Just add the "slot--filled" class and drop an <img> in as the first child.
+  Captions live in the <p class="cap"> right under each slot — edit freely.
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,500;1,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --ink:      #141414;
+    --paper:    #FFFFFF;
+    --line:     #E7E5E0;
+    --muted:    #5B5B5B;
+
+    --red:      #C33A2E;
+    --coral:    #DC8A63;
+    --yellow:   #F0D24E;
+    --teal:     #2E9C93;
+    --indigo:   #4E5FE0;
+
+    --display: 'Playfair Display', serif;
+    --body:    'Inter', sans-serif;
+
+    --space-1: 8px;
+    --space-2: 16px;
+    --space-3: 24px;
+    --space-4: 32px;
+    --space-5: 48px;
+    --space-6: 64px;
+    --space-7: 96px;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ scroll-behavior:smooth; }
+  @media (prefers-reduced-motion:reduce){
+    html{ scroll-behavior:auto; }
+    *{ animation-duration:0.001ms !important; transition-duration:0.001ms !important; }
+  }
+
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--body);
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  a{ color:inherit; }
+  img{ display:block; max-width:100%; }
+  :focus-visible{ outline:2px solid var(--red); outline-offset:3px; }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:0 var(--space-4); }
+
+  /* ---------- MARK (recurring 3-swatch identity) ---------- */
+  .mark{ display:inline-flex; }
+  .mark span{ width:14px; height:14px; display:block; }
+  .mark span:nth-child(1){ background:var(--yellow); }
+  .mark span:nth-child(2){ background:var(--red); }
+  .mark span:nth-child(3){ background:var(--indigo); }
+
+  /* ---------- NAV ---------- */
+  .nav{
+    position:sticky; top:0; z-index:50;
+    background:rgba(255,255,255,0.94);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-inner{
+    max-width:1180px; margin:0 auto; padding:14px var(--space-4);
+    display:flex; align-items:center; justify-content:space-between; gap:var(--space-2);
+  }
+  .nav-name{
+    font-family:var(--display); font-style:normal; font-weight:600;
+    font-size:21px; text-decoration:none; color:var(--ink);
+  }
+  .nav-links{ display:flex; align-items:center; gap:var(--space-4); }
+  .nav-links a:not(.btn-gh){
+    font-size:14px; font-weight:500; text-decoration:none; color:var(--ink); opacity:0.7;
+    transition:opacity 0.15s ease;
+  }
+  .nav-links a:not(.btn-gh):hover{ opacity:1; }
+  .btn-gh{
+    font-size:13px; font-weight:600;
+    background:var(--ink); color:#fff !important; opacity:1 !important;
+    padding:9px 16px; border-radius:3px; text-decoration:none;
+    display:inline-flex; align-items:center; gap:8px;
+    transition:background 0.15s ease;
+  }
+  .btn-gh:hover{ background:var(--red); }
+  .btn-gh svg{ width:14px; height:14px; fill:currentColor; }
+  @media(max-width:720px){ .nav-links a:not(.btn-gh){ display:none; } }
+
+  /* ---------- HERO / ABOUT ---------- */
+  .hero{ padding:var(--space-6) 0 var(--space-6); border-bottom:1px solid var(--line); }
+  .hero .wrap{ display:grid; grid-template-columns:1.5fr 1fr; gap:var(--space-6); }
+  @media(max-width:860px){ .hero .wrap{ grid-template-columns:1fr; gap:var(--space-4); } }
+
+  .hero h1{
+    font-family:var(--display); font-style:italic; font-weight:700;
+    font-size:clamp(40px, 6vw, 76px); line-height:1.02; max-width:13ch;
+  }
+  .hero-tagline{
+    font-family:var(--display); font-style:italic; font-weight:500;
+    font-size:clamp(20px, 2.4vw, 28px); color:var(--muted); margin-top:6px;
+  }
+  .hero-sketch{ margin-top:var(--space-4); border-radius:2px; overflow:hidden; }
+
+  .hero-body p{ margin-top:var(--space-4); max-width:56ch; color:#2b2b2b; }
+
+  .contact-card{ padding-top:6px; }
+  .contact-card .row{ margin-bottom:var(--space-3); }
+  .contact-card .label{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:4px; }
+  .contact-card .val{ font-size:15px; font-weight:500; }
+  .contact-card .val a{ text-decoration:none; border-bottom:1px solid var(--line); }
+  .contact-card .val a:hover{ border-color:var(--ink); }
+  .skills-list{ list-style:none; margin-top:6px; }
+  .skills-list li{
+    font-size:14.5px; padding:5px 0 5px 16px; position:relative; color:#2b2b2b;
+  }
+  .skills-list li::before{
+    content:''; position:absolute; left:0; top:12px; width:6px; height:6px; background:var(--indigo);
+  }
+
+  /* ---------- INTRO / "THE PROJECT" (Vision-style spread) ---------- */
+  .intro{ padding:var(--space-6) 0; border-bottom:1px solid var(--line); }
+  .intro .wrap{ display:grid; grid-template-columns:1fr 1fr; gap:var(--space-6); align-items:start; }
+  @media(max-width:860px){ .intro .wrap{ grid-template-columns:1fr; gap:var(--space-3); } }
+  .kicker{
+    font-family:var(--display); font-style:italic; font-weight:700;
+    font-size:clamp(32px, 4vw, 48px); margin-bottom:var(--space-2);
+  }
+  .bar{ height:14px; width:100%; margin-bottom:var(--space-4); }
+  .bar--red{ background:var(--red); }
+  .bar--yellow{ background:var(--yellow); }
+  .bar--teal{ background:var(--teal); }
+  .bar--indigo{ background:var(--indigo); }
+  .intro-text p{ max-width:52ch; color:#2b2b2b; margin-bottom:var(--space-3); }
+  .intro-text p:last-child{ margin-bottom:0; }
+  .intro-sketch{ align-self:stretch; }
+
+  /* ---------- PHASE SECTIONS ---------- */
+  .phase{ padding:var(--space-7) 0; border-bottom:1px solid var(--line); }
+  .phase:last-of-type{ border-bottom:none; }
+
+  .phase-head{ margin-bottom:var(--space-5); }
+  .phase-head .kicker{ margin-bottom:var(--space-1); }
+  .phase-head .bar{ margin-bottom:var(--space-3); max-width:220px; }
+  .phase-desc{ max-width:60ch; color:var(--muted); font-size:16px; }
+
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:var(--space-4); }
+  .card{ display:flex; flex-direction:column; gap:10px; }
+  .card.span-2{ grid-column:span 2; }
+  @media(max-width:640px){ .card.span-2{ grid-column:span 1; } }
+
+  .slot{
+    position:relative; aspect-ratio:4/3;
+    background:
+      repeating-linear-gradient(135deg, rgba(20,20,20,0.05) 0 2px, transparent 2px 14px);
+    background-color:#F7F6F3;
+    border:1px dashed #C9C6BE;
+    border-radius:2px; overflow:hidden;
+    opacity:0; transform:translateY(14px);
+    transition:opacity 0.5s ease, transform 0.5s ease;
+  }
+  .slot.in-view{ opacity:1; transform:translateY(0); }
+  .slot--filled{ border-style:solid; }
+  .slot--filled img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .slot-tag{
+    position:absolute; top:10px; left:10px; z-index:2;
+    width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+    font-family:var(--body); font-weight:700; font-size:12px; color:#fff;
+  }
+  .phase--analysis .slot-tag{ background:var(--yellow); color:var(--ink); }
+  .phase--design .slot-tag{ background:var(--teal); }
+  .phase--construction .slot-tag{ background:var(--indigo); }
+  .card.wide .slot{ aspect-ratio:16/9; }
+
+  .cap{ font-size:14.5px; color:#333; line-height:1.5; }
+  .cap b{ font-weight:600; }
+  .cap i{ font-family:var(--display); font-style:italic; color:var(--muted); }
+
+  /* ---------- FOOTER ---------- */
+  .footer{ background:var(--ink); color:#fff; padding:var(--space-6) 0 var(--space-4); }
+  .footer-top{
+    display:flex; justify-content:space-between; align-items:flex-start; gap:var(--space-4);
+    flex-wrap:wrap; padding-bottom:var(--space-5); border-bottom:1px solid rgba(255,255,255,0.15);
+  }
+  .footer h3{
+    font-family:var(--display); font-style:italic; font-weight:600;
+    font-size:clamp(26px,4vw,38px); max-width:16ch; line-height:1.1;
+  }
+  .footer-links{ display:flex; flex-direction:column; gap:10px; align-items:flex-start; }
+  .footer-links a{
+    font-size:14px; font-weight:500; text-decoration:none; color:#fff; opacity:0.85;
+    border-bottom:1px solid transparent;
+  }
+  .footer-links a:hover{ opacity:1; border-color:var(--yellow); }
+  .footer-bottom{
+    padding-top:var(--space-3); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
+    font-size:12px; color:rgba(255,255,255,0.5);
+  }
+  .footer-bottom .mark span{ width:10px; height:10px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#top" class="nav-name">Brett Chelf</a>
+    <div class="nav-links">
+      <a href="#analysis">Site</a>
+      <a href="#design">Design</a>
+      <a href="#construction">Build</a>
+      <span class="mark" aria-hidden="true"><span></span><span></span><span></span></span>
+      <a class="btn-gh" href="https://bchelf-bit.github.io/portfolio/" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO / ABOUT ============ -->
+<header class="hero" id="top">
+  <div class="wrap">
+    <div>
+      <h1>Manrique,<br>Medellín</h1>
+      <p class="hero-tagline">Site notes, design, and build</p>
+      <div class="hero-body">
+        <p>A semester of site analysis, design, and hands-on construction in Barrio La Cruz — documenting a community library project built alongside local residents as part of a study abroad practicum in urban planning and community engagement.</p>
+      </div>
+      <div class="hero-sketch">
+        <svg viewBox="0 0 620 220" width="100%" role="img" aria-label="Line sketch of the library structure on its hillside site">
+          <rect width="620" height="220" fill="#EFF3F6"/>
+          <path d="M0,160 C120,130 260,180 380,150 C480,126 560,150 620,140" fill="none" stroke="#B9C6D2" stroke-width="1.5"/>
+          <path d="M0,185 C120,160 260,205 380,180 C480,158 560,178 620,168" fill="none" stroke="#CBD5DC" stroke-width="1.5"/>
+          <g stroke="#141414" stroke-width="2" fill="none" stroke-linejoin="round">
+            <path d="M170,60 L310,40 L440,64 L440,150 L170,150 Z"/>
+            <path d="M150,72 L310,40 L450,66" />
+            <path d="M170,150 L170,60 M310,150 L310,40 M440,150 L440,64"/>
+          </g>
+          <rect x="200" y="100" width="60" height="50" fill="var(--coral)" opacity="0.85"/>
+          <rect x="360" y="105" width="46" height="45" fill="var(--yellow)" opacity="0.85"/>
+          <g stroke="#141414" stroke-width="1" opacity="0.5">
+            <path d="M175,65 L175,148 M186,65 L186,148 M197,65 L197,148"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="contact-card">
+      <div class="row">
+        <div class="label">Location</div>
+        <div class="val">Barrio La Cruz, Manrique, Medellín, CO</div>
+      </div>
+      <div class="row">
+        <div class="label">Role</div>
+        <div class="val">Site analysis · design · build crew</div>
+      </div>
+      <div class="row">
+        <div class="label">Links</div>
+        <div class="val"><a href="https://bchelf-bit.github.io/portfolio/" target="_blank" rel="noopener">GitHub</a> · <a href="mailto:bchelfdata@gmail.com">Email</a></div>
+      </div>
+      <div class="row">
+        <div class="label">Tools on this project</div>
+        <ul class="skills-list">
+          <li>AutoCAD site survey → basemap</li>
+          <li>SketchUp massing &amp; detail planning</li>
+          <li>Adobe Suite, refined graphics</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ THE PROJECT ============ -->
+<section class="intro">
+  <div class="wrap">
+    <div>
+      <div class="kicker">The project</div>
+      <div class="bar bar--red"></div>
+      <div class="intro-text">
+        <p>Barrio La Cruz sits high on Manrique's slope, part of the comuna network that Medellín's social urbanism model has slowly reshaped over two decades — library-parks, cable cars, and public infrastructure delivered to neighborhoods the city once treated as informal and unreachable.</p>
+        <p>This project sat inside that tradition at a small scale: working with residents to plan and build a community library that responds to the site's terrain, its drainage, and the way people already move through it. What follows is the record of that process, from the first measurements taken on the slope to the weeks spent laying block alongside the crew who will use the space.</p>
+      </div>
+    </div>
+    <div class="intro-sketch">
+      <div class="slot slot--filled" style="aspect-ratio:1/1;">
+        <img src="images/site-aerial.jpg" alt="Satellite view of Barrio La Cruz, Manrique, with the project lot outlined near the bottom of the frame">
+        <div class="slot-tag" style="background:var(--red); color:#fff;">00</div>
+      </div>
+      <p class="cap" style="margin-top:10px;"><i>Site from above.</i> Barrio La Cruz seen from satellite, with the lot outlined near the bottom of the frame.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PHASE 1: SITE ANALYSIS ============ -->
+<section class="phase phase--analysis" id="analysis">
+  <div class="wrap">
+    <div class="phase-head">
+      <div class="kicker">Site Analysis</div>
+      <div class="bar bar--yellow"></div>
+      <p class="phase-desc">Reading the slope — topography, drainage, demographics, and how the neighborhood already uses the site before a single line of design touched it.</p>
+    </div>
+    <div class="grid">
+      <div class="card wide span-2">
+        <div class="slot slot--filled"><img src="images/site-survey-cad.png" alt="Official boundary survey of the lot, drafted in AutoCAD showing property lines and topography"><div class="slot-tag">01</div></div>
+        <p class="cap"><b>Property survey.</b> The lot's official boundary survey, pulled into AutoCAD as the base drawing for everything that followed.</p>
+      </div>
+      <div class="card">
+        <div class="slot slot--filled"><img src="images/site-basemap-simplified.png" alt="Simplified CAD basemap showing boundary lines, topography, and existing structures"><div class="slot-tag">02</div></div>
+        <p class="cap"><b>Site basemap, cleaned up.</b> Boundary lines, topography, and existing structures isolated from the raw survey file.</p>
+      </div>
+      <div class="card">
+        <div class="slot slot--filled"><img src="images/student-pressure-diagram.png" alt="Pyramid diagram showing compounding pressures on students: violence and insecurity, early work, and long commutes"><div class="slot-tag">03</div></div>
+        <p class="cap"><b>Student pressure diagram.</b> Visualizing the compounding pressures — insecurity, early work, long commutes — that keep local kids out of school.</p>
+      </div>
+      <div class="card">
+        <div class="slot slot--filled"><img src="images/presenting-findings.jpg" alt="Three team members presenting site analysis findings on a projector screen to community members"><div class="slot-tag">04</div></div>
+        <p class="cap"><b>Sharing findings.</b> Presenting the site analysis — including where services and safe space fall short — back to residents and partner staff.</p>
+      </div>
+      <div class="card">
+        <div class="slot slot--filled"><img src="images/community-session-table.jpg" alt="Team members and community partners reviewing maps and notes around a table"><div class="slot-tag">05</div></div>
+        <p class="cap"><b>Community session.</b> Working through site findings with Con-Vivamos staff, notebooks and maps spread across the table.</p>
+      </div>
+      <div class="card wide span-2">
+        <div class="slot slot--filled"><img src="images/partner-kickoff-group.jpg" alt="Large group photo of students, Con-Vivamos staff, and Barrio La Cruz residents in front of the Con-Vivamos office"><div class="slot-tag">06</div></div>
+        <p class="cap"><b>Kickoff with our partners.</b> The full team — students, Con-Vivamos staff, and Barrio La Cruz residents — at the start of the project.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PHASE 2: DESIGN ============ -->
+<section class="phase phase--design" id="design">
+  <div class="wrap">
+    <div class="phase-head">
+      <div class="kicker">Design</div>
+      <div class="bar bar--teal"></div>
+      <p class="phase-desc">Turning the site analysis into a buildable plan — terraced drainage, massing, and a planting layout that could survive both the slope and the budget.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="slot slot--filled"><img src="images/proposal-sketch.jpg" alt="Hand-drawn notebook sketch labeled Proposal 1, showing park, garden, roof, and library zones"><div class="slot-tag">07</div></div>
+        <p class="cap"><b>First proposal, sketched.</b> Working out the park, garden, and library massing on graph paper before it touched CAD.</p>
+      </div>
+      <div class="card wide span-2">
+        <div class="slot slot--filled"><img src="images/park-plan-cad.png" alt="Colored CAD site plan showing access points, elevation levels, and the library footprint"><div class="slot-tag">08</div></div>
+        <p class="cap"><b>Park plan, simplified.</b> Layers extracted from the surveyor's CAD file and rebuilt for the massing model — access points, levels, and the library footprint.</p>
+      </div>
+      <div class="card">
+        <div class="slot slot--filled"><img src="images/drainage-section-concept.png" alt="Section drawing of terraced drainage and planting integrated into a sloped massing model"><div class="slot-tag">09</div></div>
+        <p class="cap"><b>Terraced drainage concept.</b> Early massing model integrating planting terraces to manage runoff instead of fighting it.</p>
+      </div>
+      <div class="card">
+        <div class="slot slot--filled"><img src="images/site-massing-render.jpg" alt="Rendered massing of the library and surrounding buildings on the site"><div class="slot-tag">10</div></div>
+        <p class="cap"><b>Site massing render.</b> The library and surrounding structures rendered together to check scale against the block.</p>
+      </div>
+      <div class="card">
+        <div class="slot slot--filled"><img src="images/plaza-render.jpg" alt="Rendered view of a stepped stone plaza and terrace leading toward the building entrance"><div class="slot-tag">11</div></div>
+        <p class="cap"><b>Plaza rendering.</b> The stepped terrace and seating leading up to the entrance.</p>
+      </div>
+      <div class="card wide span-2">
+        <div class="slot slot--filled"><img src="images/massing-model-final.jpeg" alt="White massing model with planting terraces integrated along the entrance path"><div class="slot-tag">12</div></div>
+        <p class="cap"><b>Final massing model.</b> Planting terraces integrated into the massing before construction began.</p>
+      </div>
+      <div class="card">
+        <div class="slot slot--filled"><img src="images/materiality-model.jpeg" alt="3D model with yellow wall panels and a corrugated black roof, testing material and color"><div class="slot-tag">13</div></div>
+        <p class="cap"><b>Materiality pass.</b> Testing the corrugated roofing and wall color against the massing model.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PHASE 3: CONSTRUCTION ============ -->
+<section class="phase phase--construction" id="construction">
+  <div class="wrap">
+    <div class="phase-head">
+      <div class="kicker">Construction</div>
+      <div class="bar bar--indigo"></div>
+      <p class="phase-desc">On-site with the build crew — the part of the process where plans meet the actual weight of block, mortar, and slope.</p>
+    </div>
+    <div class="grid">
+      <div class="card wide span-2">
+        <div class="slot"><div class="slot-tag">14</div></div>
+        <p class="cap"><b>Foundation week.</b> Laying out the footprint on-site with the local crew, checking it against the terrace drawings.</p>
+      </div>
+      <div class="card">
+        <div class="slot"><div class="slot-tag">15</div></div>
+        <p class="cap"><b>Brickwork.</b> Learning to lay block the way it's actually done here, not the way it's drawn.</p>
+      </div>
+      <div class="card">
+        <div class="slot slot--filled"><img src="images/roof-installation.jpg" alt="Corrugated roofing and wall panels installed over the finished blue-painted block structure"><div class="slot-tag">16</div></div>
+        <p class="cap"><b>Roofing goes up.</b> Installing the corrugated panels over the finished block walls.</p>
+      </div>
+      <div class="card">
+        <div class="slot slot--filled"><img src="images/finished-benches.jpg" alt="Painted concrete benches labeled Mujeres and Niñas y niños, with people sitting on them"><div class="slot-tag">17</div></div>
+        <p class="cap"><b>Finished benches.</b> Painted concrete seating, labeled by the community groups who'll use it — mujeres, niñas y niños.</p>
+      </div>
+      <div class="card">
+        <div class="slot slot--filled"><img src="images/team-crew-mural.jpg" alt="The project team posing in front of a blue wall with a mural reading La Biblioteca en la Ladera"><div class="slot-tag">18</div></div>
+        <p class="cap"><b>The crew.</b> Everyone who built this, in front of the mural — <i>la biblioteca en la ladera.</i></p>
+      </div>
+      <div class="card wide span-2">
+        <div class="slot"><div class="slot-tag">19</div></div>
+        <p class="cap"><b>Opening day.</b> The finished library-park, and the first afternoon it was actually used.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <h3>See the full portfolio, drawings, and write-up</h3>
+      <div class="footer-links">
+        <a href="https://bchelf-bit.github.io/portfolio/" target="_blank" rel="noopener">GitHub portfolio →</a>
+        <a href="mailto:bchelfdata@gmail.com">bchelfdata@gmail.com →</a>
+        <a href="#top">Back to top ↑</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>Brett Chelf — Environmental Science &amp; Environmental Design, CU Boulder</span>
+      <span class="mark" aria-hidden="true"><span></span><span></span><span></span></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in-view'); io.unobserve(e.target); } });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.slot').forEach(el => io.observe(el));
+  } else {
+    document.querySelectorAll('.slot').forEach(el => el.classList.add('in-view'));
+  }
+</script>
+
+</body>
+</html>
